@@ -3,8 +3,6 @@ class TreeManager {
 
     constructor(string) {
         this.string = string;
-
-        this.init(this).then((p) => console.log("Initialized"));
     }
 
     async init(self) {
@@ -27,33 +25,31 @@ class TreeManager {
         }
 
         self.parser.setLanguage(language);
-
-        self.parse(self, self.string, null)
+        self.tree = null;
     }
 
-    async parse(self, newString, tree) {
+    parse(newString) {
         let start = performance.now();
 
-        const newTree = self.parser.parse(newString + '\n');
+        this.tree = this.parser.parse(newString + '\n', this.tree);
         const duration = (performance.now() - start).toFixed(1);
-        console.log(`${duration} ms`);
-        if (tree) tree.delete();
-        tree = newTree;
-        self.parseCount++;
-        console.log(buildTree(tree));
+        console.log(`parsed in ${duration} ms`);
+        this.parseCount++;
+    }
+
+    buildTree() {
+        const cursor = this.tree.walk();
+        let nodeObject = [];
+        let childCount = 0;
+    
+        let name, rootnode = recursivelyBuild(cursor, nodeObject, childCount);
+    
+        return rootnode;
     }
 
 }
 
-function buildTree(tree) {
-    const cursor = tree.walk();
-    let nodeObject = {};
-    let childCount = 0;
 
-    let name, rootnode = recursivelyBuild(cursor, nodeObject, childCount);
-
-    return rootnode;
-}
 
 function recursivelyBuild(cursor, node, childCount) {
 
@@ -61,29 +57,25 @@ function recursivelyBuild(cursor, node, childCount) {
     let firstNode = buildNode(cursor, childCount);
     
     //the first node
-    node[firstNode.displayName] = firstNode;
-    childCount++;
+    
 
     if(cursor.gotoFirstChild())
     {
-        let childObject = {}
-        let childName = "";
-        childName , childObject = recursivelyBuild(cursor, childObject, 0);
-        node[childName] = childObject;
+        firstNode.children = [];
+        firstNode.children = recursivelyBuild(cursor, firstNode.children, 0);
 
         cursor.gotoParent();
     }
+
+    node.push(firstNode);
+    childCount++;
 
     if(cursor.gotoNextSibling())
     {  
-        let siblingName;
-        siblingName, node = recursivelyBuild(cursor, node, childCount);
-    }else
-    {
-        cursor.gotoParent();
+        node = recursivelyBuild(cursor, node, childCount);
     }
 
-    return name, node;
+    return node;
 }
 
 function buildNode(cursor, childCount)
@@ -113,4 +105,12 @@ function buildNode(cursor, childCount)
         indexRange : { start : cursor.startIndex, end : cursor.endIndex },
         id: id 
     };
+}
+
+function buildHTMLNode(node)
+{
+
+
+    let nodeString ="";
+
 }

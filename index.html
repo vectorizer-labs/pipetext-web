@@ -34,7 +34,16 @@ function bubble_Sort(arr){
     </div>
     <script>
 
-        let treeManager = new TreeManager(document.getElementById("text-container").textContent);
+        let treeManager = new TreeManager();
+        treeManager.init(treeManager).then((p) => 
+        {
+            console.log("Initialized");
+            treeManager.parse(document.getElementById("text-container").textContent);
+            var tree = treeManager.buildTree();
+            console.log(tree);
+        });
+        
+        
     </script>
 </body>
 
