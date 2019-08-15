@@ -7,8 +7,8 @@
 </head>
 
 <body>
-    <div contenteditable="true" id="text-container">
-        <pre>
+    <div contenteditable="true">
+        <pre id="text-container">
 function swap(arr, first_Index, second_Index){
     var temp = arr[first_Index];
     arr[first_Index] = arr[second_Index];
@@ -38,9 +38,12 @@ function bubble_Sort(arr){
         treeManager.init(treeManager).then((p) => 
         {
             console.log("Initialized");
-            treeManager.parse(document.getElementById("text-container").textContent);
+            var initialString = document.getElementById("text-container").textContent;
+
+            treeManager.parse(initialString);
             var tree = treeManager.buildTree();
             console.log(tree);
+            document.getElementById("text-container").innerHTML = buildHTMLNode(tree[0], initialString);
         });
         
         

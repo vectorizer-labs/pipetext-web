@@ -55,7 +55,6 @@ function recursivelyBuild(cursor, node, childCount) {
 
     //we enter into this level as the first node on the left
     let firstNode = buildNode(cursor, childCount);
-    
     //the first node
     
 
@@ -67,8 +66,7 @@ function recursivelyBuild(cursor, node, childCount) {
         cursor.gotoParent();
     }
 
-    node.push(firstNode);
-    childCount++;
+    if(firstNode) { node.push(firstNode); childCount++; }
 
     if(cursor.gotoNextSibling())
     {  
@@ -87,16 +85,14 @@ function buildNode(cursor, childCount)
         displayName = cursor.nodeType;
     }
 
+    if(displayName == undefined) return null;
+
     const start = cursor.startPosition;
     const end = cursor.endPosition;
     const id = cursor.nodeId;
 
     let fieldName = cursor.currentFieldName();
-    if (!fieldName) {
-        fieldName = '';
-    }
-
-    if(displayName == undefined) displayName = childCount.toString();
+    if (!fieldName) fieldName = '';
 
     return { 
         displayName: displayName, 
@@ -107,10 +103,37 @@ function buildNode(cursor, childCount)
     };
 }
 
-function buildHTMLNode(node)
+function buildHTMLNode(parentNode, srcString)
 {
+    //open the node
+    let nodeString ="<span style='padding: 1px; border-radius: 25px; background-color :" + getRandomColor() + " ;' displayName = " + parentNode.displayName + " >";
+    if(parentNode.children)
+    {
+        parentNode.children.sort(function(a, b){ return a.indexRange.start - b.indexRange.start });
 
+        let lastNode = { indexRange : { end : parentNode.indexRange.start} };
 
-    let nodeString ="";
+        parentNode.children.forEach(n => 
+        {
+            nodeString += srcString.substring(lastNode.indexRange.end, n.indexRange.start);
+            nodeString += buildHTMLNode(n, srcString);
+            lastNode = n;
+        });
+
+        nodeString += srcString.substring(lastNode.indexRange.end,parentNode.indexRange.end);
+    }
+    else nodeString += srcString.substring(parentNode.indexRange.start,parentNode.indexRange.end);
+
+    //close the node
+    return nodeString + "</span>";
 
 }
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
