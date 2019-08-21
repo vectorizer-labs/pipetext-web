@@ -1,62 +1,8 @@
-class TreeManager {
-
-
-    constructor(string) {
-        this.string = string;
-    }
-
-    async init(self) {
-        await TreeSitter.init();
-
-        self.parser = new TreeSitter();
-
-        await self.handleLanguageChange(self, "javascript");
-    }
-
-    async handleLanguageChange(self, newLanguageName) {
-        var language;
-
-        const url = `./tree-sitter/tree-sitter-${newLanguageName}.wasm`
-        try {
-            language = await TreeSitter.Language.load(url);
-        } catch (e) {
-            console.error(e);
-            return
-        }
-
-        self.parser.setLanguage(language);
-        self.tree = null;
-    }
-
-    parse(newString) {
-        let start = performance.now();
-
-        this.tree = this.parser.parse(newString + '\n', this.tree);
-        const duration = (performance.now() - start).toFixed(1);
-        console.log(`parsed in ${duration} ms`);
-        this.parseCount++;
-    }
-
-    buildTree() {
-        const cursor = this.tree.walk();
-        let nodeObject = [];
-        let childCount = 0;
-    
-        let name, rootnode = recursivelyBuild(cursor, nodeObject, childCount);
-    
-        return rootnode;
-    }
-
-}
-
-
-
-function recursivelyBuild(cursor, node, childCount) {
+export function recursivelyBuild(cursor, node, childCount) {
 
     //we enter into this level as the first node on the left
     let firstNode = buildNode(cursor, childCount);
     //the first node
-    
 
     if(cursor.gotoFirstChild())
     {
@@ -103,10 +49,11 @@ function buildNode(cursor, childCount)
     };
 }
 
-function buildHTMLNode(parentNode, srcString)
+export function buildHTMLNode(parentNode, srcString, cursorIndex)
 {
     //open the node
-    let nodeString ="<span style='padding: 1px; border-radius: 25px; background-color :" + getRandomColor() + " ;' displayName = " + parentNode.displayName + " >";
+    let nodeString = "";
+    let cursorString = "";
     if(parentNode.children)
     {
         parentNode.children.sort(function(a, b){ return a.indexRange.start - b.indexRange.start });
@@ -115,25 +62,58 @@ function buildHTMLNode(parentNode, srcString)
 
         parentNode.children.forEach(n => 
         {
-            nodeString += srcString.substring(lastNode.indexRange.end, n.indexRange.start);
-            nodeString += buildHTMLNode(n, srcString);
+
+            nodeString += getInbetweenTags(srcString.substring(lastNode.indexRange.end, n.indexRange.start));
+            nodeString += buildHTMLNode(n, srcString, cursorIndex);
+
             lastNode = n;
         });
 
-        nodeString += srcString.substring(lastNode.indexRange.end,parentNode.indexRange.end);
+        nodeString += getInbetweenTags(srcString.substring(lastNode.indexRange.end,parentNode.indexRange.end));
     }
     else nodeString += srcString.substring(parentNode.indexRange.start,parentNode.indexRange.end);
 
-    //close the node
-    return nodeString + "</span>";
+    let beginningDiv = parentNode.displayName + " ";
 
+    if(cursorString !== "") { beginningDiv += cursorString; console.log(parentNode.displayName);}
+    //close the node
+    return "<" + beginningDiv + " >" + nodeString + "</"+parentNode.displayName+">";
 }
 
-function getRandomColor() {
+function getInbetweenTags(betweenBits)
+{
+    let localString = "";
+
+    if(betweenBits != "")
+    {
+        let tag = betweenBits.trim();
+        tag = matchToken[tag];
+        localString +='<'+ tag + '>' + betweenBits + '</' + tag + '>';
+    } 
+
+    return localString;
+}
+
+const matchToken = 
+{
+    "{" : "open_bracket",
+    "}" : "close_bracket",
+    "import" : "import",
+    "from" : "from",
+    "export default" : "export",
+    "if" : "if",
+    "const" : "const",
+    "static" : "static",
+    "return" : "return"
+ 
+}
+
+function getRandomColor() 
+{
     var letters = '0123456789ABCDEF';
     var color = '#';
     for (var i = 0; i < 6; i++) {
       color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
-  }
+}

@@ -1,0 +1,38 @@
+html 
+{
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: 'Inconsolata', monospace;
+    font-size: 12pt;
+}
+body{padding: 0; margin: 0;}
+
+/* variable declaration */
+/*variable_declaration { color: var(--blue); }*/
+return_statement return, binary_expression identifier, variable_declarator identifier, function_declaration identifier { color: var(--green); }
+
+formal_parameters identifier { color: var(--magenta); }
+
+/* keywords */
+
+null, export, import, from { color: var(--orange); }
+if, open_bracket, close_bracket, import_clause identifier { color: var(--blue); }
+
+string { color: var(--cyan); }
+
+const, export, static { color: var(--yellow); }
+
+line { clear: both; text-align: right; width: 80%; padding-right: 20%; float: left;}
+lines { width: 40px; float: left; background-color: var(--black); 
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */}
+
+::selection
+{
+    background-color: var(--black);
+}
