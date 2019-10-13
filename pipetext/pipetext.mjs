@@ -5,8 +5,23 @@ class PipeText
     constructor(div)
     {
         this.div = div;
-        this.init(this, "javascript").then((p) => console.log(p));
         let self = this;
+
+        //create lineNums div
+        this.lineDiv = document.createElement('lines');
+        this.lineDiv.contentEditable = false;
+        
+
+        //move initial text to code div
+        this.codeDiv = document.createElement('code');
+        this.codeDiv.contentEditable = true;
+        this.codeDiv.innerHTML = this.div.innerHTML;
+        this.div.innerHTML = "";
+
+        this.div.appendChild(this.lineDiv);
+        this.div.appendChild(this.codeDiv);
+
+        this.init(self, "javascript").then((p) => console.log(p));
 
         this.div.addEventListener("input", function(event) 
         {
@@ -16,9 +31,8 @@ class PipeText
             {
                 let beginningOffset = getCaretCharacterOffsetWithin(self.div);
 
-                
                 let start = performance.now();
-                /*self.tree.edit({
+                /*(self.tree.edit({
                     startIndex: 0,
                     oldEndIndex: 3,
                     newEndIndex: 5,
@@ -27,8 +41,8 @@ class PipeText
                     newEndPosition: {row: 0, column: 5},
                   });*/
 
-                await self.parse(self);
-                await self.buildTree(self, beginningOffset);
+                
+                await self.refreshState(self, beginningOffset);
 
                 //let cursorDiv = document.getElementById("cursorDiv");
                 //let localOffset = cursorDiv.getAttribute("cursor-offset");
@@ -53,23 +67,33 @@ class PipeText
 
         self.parser = new TreeSitter();
 
-        const url = `./tree-sitter/tree-sitter-${language}.wasm`;
+        const url = `pipetext-web/tree-sitter/tree-sitter-${language}.wasm`;
 
         try { language = await TreeSitter.Language.load(url); } 
         catch (e) { console.error(e); return; }
 
+        console.log(self);
+
         self.parser.setLanguage(language);
         self.tree = null;
 
-        await self.parse(self);
-        await self.buildTree(self, 0);
-
+        await self.refreshState(self,0);
+        
         console.log("initialized");
     }
 
-    async parse(self) { self.tree = self.parser.parse(self.div.textContent, null); }
+    async refreshState(self, beginningOffset)
+    {
+        await self.parse(self);
 
-    async buildTree(self, cursorIndex) 
+        let lineNumbers = await self.refreshCodeTree(self, beginningOffset);
+
+        await self.refreshLineNums(lineNumbers,self);
+    }
+
+    async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, null); }
+
+    async refreshCodeTree(self, cursorIndex)
     {
         const cursor = self.tree.walk();
         let nodeObject = [];
@@ -78,40 +102,24 @@ class PipeText
         let rootnode = recursivelyBuild(cursor, nodeObject, childCount);
         rootnode[0].indexRange.start = 0;
 
-        console.log(rootnode);
+        self.codeDiv.innerHTML = buildHTMLNode(rootnode[0], self.codeDiv.textContent, cursorIndex);
 
-        let codeDiv = document.createElement('code');
-        codeDiv.innerHTML = buildHTMLNode(rootnode[0], self.div.textContent, cursorIndex);
+        return rootnode[0].range.end.row
+    }
 
-        console.log(rootnode[0].range.end.row);
-        let linesDiv = buildLineNums(rootnode[0].range.end.row);
-
-        linesDiv.contentEditable = "false";
-
-        self.div.innerHTML = "";
-        
-        self.div.append(linesDiv);
-        self.div.append(codeDiv);
+    async refreshLineNums(lines,self)
+    {
+        self.lineDiv.innerHTML = "";
+        for(var i = 1; i <= lines; i++)
+        {
+            let line = document.createElement('line');
+            line.textContent = i.toString();
+            self.lineDiv.appendChild(line);
+        }
     }
 }
 
 var pt = new PipeText(document.getElementById("text-container"));
-
-
-
-function buildLineNums(lines)
-{
-    let lineNumDiv = document.createElement('lines');
-
-    for(var i = 1; i <= lines; i++)
-    {
-        let line = document.createElement('line');
-        line.textContent = i.toString();
-        lineNumDiv.append(line);
-    }
-
-    return lineNumDiv;
-}
 
 function getCaretCharacterOffsetWithin(element) {
     var caretOffset = 0;

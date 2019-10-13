@@ -63,13 +63,13 @@ export function buildHTMLNode(parentNode, srcString, cursorIndex)
         parentNode.children.forEach(n => 
         {
 
-            nodeString += getInbetweenTags(srcString.substring(lastNode.indexRange.end, n.indexRange.start));
+            nodeString += getInbetweenTags(srcString, lastNode.indexRange.end, n.indexRange.start,cursorIndex);
             nodeString += buildHTMLNode(n, srcString, cursorIndex);
 
             lastNode = n;
         });
 
-        nodeString += getInbetweenTags(srcString.substring(lastNode.indexRange.end,parentNode.indexRange.end));
+        nodeString += getInbetweenTags(srcString, lastNode.indexRange.end,parentNode.indexRange.end,cursorIndex);
     }
     else nodeString += srcString.substring(parentNode.indexRange.start,parentNode.indexRange.end);
 
@@ -80,15 +80,20 @@ export function buildHTMLNode(parentNode, srcString, cursorIndex)
     return "<" + beginningDiv + " >" + nodeString + "</"+parentNode.displayName+">";
 }
 
-function getInbetweenTags(betweenBits)
+function getInbetweenTags(srcString, start, end, cursorIndex)
 {
+    let betweenBits = srcString.substring(start,end);
     let localString = "";
+
+    let isCursorDiv = cursorIndex >= start && cursorIndex < end;
+
+    let cursorString = isCursorDiv? `id = 'cursor-div' start-index = '${ start }'` : "";
 
     if(betweenBits != "")
     {
         let tag = betweenBits.trim();
         tag = matchToken[tag];
-        localString +='<'+ tag + '>' + betweenBits + '</' + tag + '>';
+        localString +='<'+ tag + cursorString + '>' + betweenBits + '</' + tag + '>';
     } 
 
     return localString;

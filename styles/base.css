@@ -5,6 +5,11 @@ html
     font-family: 'Inconsolata', monospace;
     font-size: 12pt;
 }
+
+[contenteditable]:focus {
+    outline: 0px solid transparent;
+}
+
 body{padding: 0; margin: 0;}
 
 /* variable declaration */
