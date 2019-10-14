@@ -87,7 +87,11 @@ function getInbetweenTags(srcString, start, end, cursorIndex)
 
     let isCursorDiv = cursorIndex >= start && cursorIndex < end;
 
-    let cursorString = isCursorDiv? `id = 'cursor-div' start-index = '${ start }'` : "";
+    if(isCursorDiv) { console.log("start : " + start + " end : " + end); }
+
+    let localOffset = (cursorIndex - start) -1;
+
+    let cursorString = isCursorDiv? ` id = 'cursorDiv' cursor-offset = '${ localOffset }'` : "";
 
     if(betweenBits != "")
     {

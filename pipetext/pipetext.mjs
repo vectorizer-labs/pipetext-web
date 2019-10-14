@@ -21,7 +21,7 @@ class PipeText
         this.div.appendChild(this.lineDiv);
         this.div.appendChild(this.codeDiv);
 
-        this.init(self, "javascript").then((p) => console.log(p));
+        this.init(self, "javascript").then((p) => console.log("initialized"));
 
         this.div.addEventListener("input", function(event) 
         {
@@ -29,7 +29,7 @@ class PipeText
             
             (async (preSelectionRange) => 
             {
-                let beginningOffset = getCaretCharacterOffsetWithin(self.div);
+                let beginningOffset = getCaretCharacterOffsetWithin(self.codeDiv);
 
                 let start = performance.now();
                 /*(self.tree.edit({
@@ -41,19 +41,20 @@ class PipeText
                     newEndPosition: {row: 0, column: 5},
                   });*/
 
-                
+                console.log(beginningOffset);
                 await self.refreshState(self, beginningOffset);
 
-                //let cursorDiv = document.getElementById("cursorDiv");
-                //let localOffset = cursorDiv.getAttribute("cursor-offset");
-
-                //let range = document.createRange();
-                console.log(beginningOffset);
-                //range.setStart(cursorDiv, localOffset);
-                //range.setEnd(cursorDiv, localOffset);
                 
-                //window.getSelection().removeAllRanges();
-                //window.getSelection().addRange(range);
+
+                let cursorDiv = document.getElementById("cursorDiv");
+                let localOffset = cursorDiv.getAttribute("cursor-offset");
+
+                let range = document.createRange();
+                range.setStart(cursorDiv, localOffset);
+                range.setEnd(cursorDiv, localOffset);
+                
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
                 const duration = (performance.now() - start).toFixed(1);
                 console.log(`parsed in ${duration} ms`);
             })();
@@ -79,7 +80,6 @@ class PipeText
 
         await self.refreshState(self,0);
         
-        console.log("initialized");
     }
 
     async refreshState(self, beginningOffset)
@@ -89,6 +89,8 @@ class PipeText
         let lineNumbers = await self.refreshCodeTree(self, beginningOffset);
 
         await self.refreshLineNums(lineNumbers,self);
+
+        console.log(document.getElementById("cursorDiv"));
     }
 
     async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, null); }
