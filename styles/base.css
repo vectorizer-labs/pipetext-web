@@ -21,7 +21,7 @@ formal_parameters identifier { color: var(--magenta); }
 /* keywords */
 
 null, export, import, from { color: var(--orange); }
-if, open_bracket, close_bracket, import_clause identifier { color: var(--blue); }
+if, import_clause identifier { color: var(--blue); }
 
 string { color: var(--cyan); }
 
@@ -39,5 +39,5 @@ lines { width: 40px; float: left; background-color: var(--black);
 
 ::selection
 {
-    background-color: var(--black);
+    background-color: var(--fg);
 }

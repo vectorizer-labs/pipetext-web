@@ -89,7 +89,7 @@ function getInbetweenTags(srcString, start, end, cursorIndex)
 
     if(isCursorDiv) { console.log("start : " + start + " end : " + end); }
 
-    let localOffset = (cursorIndex - start) -1;
+    let localOffset = Math.min(0,(cursorIndex - start));
 
     let cursorString = isCursorDiv? ` id = 'cursorDiv' cursor-offset = '${ localOffset }'` : "";
 

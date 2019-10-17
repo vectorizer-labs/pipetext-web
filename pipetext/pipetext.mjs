@@ -1,11 +1,13 @@
 import { recursivelyBuild, buildHTMLNode } from "./recursive-tree-builder.mjs";
 
+import { Docstate } from "./ot-core.mjs";
+
 class PipeText
 {
     constructor(div)
     {
         this.div = div;
-        let self = this;
+        
 
         //create lineNums div
         this.lineDiv = document.createElement('lines');
@@ -21,6 +23,12 @@ class PipeText
         this.div.appendChild(this.lineDiv);
         this.div.appendChild(this.codeDiv);
 
+        this.lastTextContent = this.codeDiv.textContent;
+
+        this.docState = new Docstate(this.lastTextContent);
+
+        let self = this;
+
         this.init(self, "javascript").then((p) => console.log("initialized"));
 
         this.div.addEventListener("input", function(event) 
@@ -29,22 +37,29 @@ class PipeText
             
             (async (preSelectionRange) => 
             {
-                let beginningOffset = getCaretCharacterOffsetWithin(self.codeDiv);
-
                 let start = performance.now();
-                /*(self.tree.edit({
-                    startIndex: 0,
-                    oldEndIndex: 3,
-                    newEndIndex: 5,
+                let beginningOffset = getCaretCharacterOffsetWithin(self.codeDiv);
+                let diff = getDiff(self.lastTextContent, self.codeDiv.textContent, beginningOffset);
+                let ops = diffToOps(diff, self.docState);
+                // apply ops locally
+                for (var i = 0; i < ops.length; i++) {
+                    self.docState.add(ops[i]);
+                }
+                console.log('ops:' + JSON.stringify(ops));
+                //console.log('docstate: ' + self.docState.get_str());
+
+                
+                await self.tree.edit({
+                    startIndex: diff[0],
+                    oldEndIndex: self.lastTextContent.length,
+                    newEndIndex: self.codeDiv.textContent.length,
                     startPosition: {row: 0, column: 0},
                     oldEndPosition: {row: 0, column: 3},
                     newEndPosition: {row: 0, column: 5},
-                  });*/
+                  });
 
-                console.log(beginningOffset);
+                //console.log(beginningOffset);
                 await self.refreshState(self, beginningOffset);
-
-                
 
                 let cursorDiv = document.getElementById("cursorDiv");
                 let localOffset = cursorDiv.getAttribute("cursor-offset");
@@ -57,6 +72,9 @@ class PipeText
                 window.getSelection().addRange(range);
                 const duration = (performance.now() - start).toFixed(1);
                 console.log(`parsed in ${duration} ms`);
+
+                self.lastTextContent = self.codeDiv.textContent;
+
             })();
 
         }, false);
@@ -93,7 +111,7 @@ class PipeText
         console.log(document.getElementById("cursorDiv"));
     }
 
-    async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, null); }
+    async parse(self) { self.tree = self.parser.parse(self.docState.get_str(), null); }
 
     async refreshCodeTree(self, cursorIndex)
     {
@@ -104,7 +122,7 @@ class PipeText
         let rootnode = recursivelyBuild(cursor, nodeObject, childCount);
         rootnode[0].indexRange.start = 0;
 
-        self.codeDiv.innerHTML = buildHTMLNode(rootnode[0], self.codeDiv.textContent, cursorIndex);
+        self.codeDiv.innerHTML = buildHTMLNode(rootnode[0], self.docState.get_str(), cursorIndex);
 
         return rootnode[0].range.end.row
     }
@@ -147,9 +165,7 @@ function getCaretCharacterOffsetWithin(element) {
     return caretOffset;
 }
 
-
-function getDiff(oldText, newText, cursor) 
-{
+function getDiff(oldText, newText, cursor) {
     var delta = newText.length - oldText.length;
     var limit = Math.max(0, cursor - delta);
     var end = oldText.length;
@@ -161,5 +177,26 @@ function getDiff(oldText, newText, cursor)
     while (start < startLimit && oldText.charAt(start) == newText.charAt(start)) {
         start += 1;
     }
-    return [start, end];
+    return [start, end, newText.slice(start, end + delta)];
+}
+
+var pri = Math.floor(Math.random() * 0x1000000);
+var ser = 0;
+function getid() {
+    return (pri * 0x100000) + ser++;
+}
+
+function diffToOps(diff, docState) {
+    var start = diff[0];
+    var end = diff[1];
+    var newstr = diff[2];
+    var result = [];
+    for (var i = start; i < end; i++) {
+        result.push({pri: pri, ty: 'del', ix: docState.xform_ix(i), id: getid()});
+    }
+    var ix = docState.xform_ix(end);
+    for (var i = 0; i < newstr.length; i++) {
+        result.push({pri: pri, ty: 'ins', ix: ix + i, id: getid(), ch: newstr.charAt(i)});
+    }
+    return result;
 }
