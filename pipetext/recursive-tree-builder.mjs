@@ -1,37 +1,63 @@
-export function recursivelyBuild(cursor, node, childCount) {
-
+export function buildHTMLNode2(cursor, srcString, self)
+{
     //we enter into this level as the first node on the left
-    let firstNode = buildNode(cursor, childCount);
-    //the first node
+    var firstNode = buildNode(cursor, srcString, self);
 
+    //We need to go to the first child before passing down to the buildHTMLNode2 recursively
     if(cursor.gotoFirstChild())
     {
-        firstNode.children = [];
-        firstNode.children = recursivelyBuild(cursor, firstNode.children, 0);
+        var last_child = buildHTMLNode2(cursor, srcString, self);
+
+        if(firstNode.getAttribute("startIndex"))
+        {
+            firstNode.appendChild(document.createTextNode(srcString.substring(
+                firstNode.getAttribute("startIndex")
+                ,cursor.startIndex)));
+        }
+
+        //cursor is now at first child so we pass it down
+        firstNode.appendChild(last_child);
+
+        while(cursor.gotoNextSibling())
+        {  
+            //determine if a space exists between the last_child and this child
+            if(last_child.getAttribute("endIndex"))
+            {
+                firstNode.appendChild(document.createTextNode(srcString.substring(
+                    last_child.getAttribute("endIndex")
+                    ,cursor.startIndex)));
+
+            }
+
+            last_child = buildHTMLNode2(cursor, srcString, self);
+            
+            //append all the relevant 
+            firstNode.appendChild(last_child);
+        }
 
         cursor.gotoParent();
-    }
 
-    if(firstNode) { node.push(firstNode); childCount++; }
+        //determine if a space exists between the last_child and this child
+        if(last_child.getAttribute("endIndex"))
+        {
+            firstNode.appendChild(document.createTextNode(srcString.substring(
+                last_child.getAttribute("endIndex")
+                ,cursor.endIndex)));
+        }
 
-    if(cursor.gotoNextSibling())
-    {  
-        node = recursivelyBuild(cursor, node, childCount);
-    }
-
-    return node;
+    } else firstNode.innerText = srcString.substring(cursor.startIndex, cursor.endIndex);
+    
+    return firstNode;   
 }
 
-function buildNode(cursor, childCount)
+function buildNode(cursor, srcString, self)
 {
     let displayName;
     if (cursor.nodeIsMissing) {
-        displayName = `MISSING ${cursor.nodeType}`
+        displayName = `MISSING ${cursor.nodeType}`;
     } else if (cursor.nodeIsNamed) {
         displayName = cursor.nodeType;
     }
-
-    if(displayName == undefined) return null;
 
     const start = cursor.startPosition;
     const end = cursor.endPosition;
@@ -40,89 +66,81 @@ function buildNode(cursor, childCount)
     let fieldName = cursor.currentFieldName();
     if (!fieldName) fieldName = '';
 
-    return { 
-        displayName: displayName, 
-        fieldName: fieldName, 
-        range: { start: start, end: end }, 
-        indexRange : { start : cursor.startIndex, end : cursor.endIndex },
-        id: id 
-    };
-}
+    let range = { start: start, end: end };
+    let indexRange = { start : cursor.startIndex, end : cursor.endIndex };
 
-export function buildHTMLNode(parentNode, srcString, cursorIndex)
-{
-    //open the node
-    let nodeString = "";
-    let cursorString = "";
-    if(parentNode.children)
-    {
-        parentNode.children.sort(function(a, b){ return a.indexRange.start - b.indexRange.start });
+    let HTMLNode = (displayName == undefined) ? 
+        getInbetweenTags(srcString, cursor.startIndex, cursor.endIndex, null) : 
+        document.createElement(displayName);
 
-        let lastNode = { indexRange : { end : parentNode.indexRange.start} };
+    HTMLNode.contentEditable = true;
+    
+    HTMLNode.setAttribute("fieldName", fieldName);
 
-        parentNode.children.forEach(n => 
-        {
+    //ROW
+    HTMLNode.setAttribute("startRow", start.row);
+    HTMLNode.setAttribute("endRow", end.row);
 
-            nodeString += getInbetweenTags(srcString, lastNode.indexRange.end, n.indexRange.start,cursorIndex);
-            nodeString += buildHTMLNode(n, srcString, cursorIndex);
+    //COLUMN
+    HTMLNode.setAttribute("startColumn", start.column);
+    HTMLNode.setAttribute("endColumn", end.column);
 
-            lastNode = n;
-        });
+    //INDICES
+    HTMLNode.setAttribute("startIndex", cursor.startIndex);
+    HTMLNode.setAttribute("endIndex", cursor.endIndex);
 
-        nodeString += getInbetweenTags(srcString, lastNode.indexRange.end,parentNode.indexRange.end,cursorIndex);
-    }
-    else nodeString += srcString.substring(parentNode.indexRange.start,parentNode.indexRange.end);
+    HTMLNode.setAttribute("nodeId", id);
 
-    let beginningDiv = parentNode.displayName + " ";
-
-    if(cursorString !== "") { beginningDiv += cursorString; console.log(parentNode.displayName);}
-    //close the node
-    return "<" + beginningDiv + " >" + nodeString + "</"+parentNode.displayName+">";
+    return HTMLNode;
 }
 
 function getInbetweenTags(srcString, start, end, cursorIndex)
 {
     let betweenBits = srcString.substring(start,end);
-    let localString = "";
-
-    let isCursorDiv = cursorIndex >= start && cursorIndex < end;
-
-    if(isCursorDiv) { console.log("start : " + start + " end : " + end); }
-
-    let localOffset = Math.min(0,(cursorIndex - start));
-
-    let cursorString = isCursorDiv? ` id = 'cursorDiv' cursor-offset = '${ localOffset }'` : "";
 
     if(betweenBits != "")
     {
         let tag = betweenBits.trim();
         tag = matchToken[tag];
-        localString +='<'+ tag + cursorString + '>' + betweenBits + '</' + tag + '>';
-    } 
+ 
+        //console.log("'"+betweenBits+"'");
 
-    return localString;
+        let HTMLNode = document.createElement(tag);
+
+        HTMLNode.textContent = betweenBits;
+
+        /*
+        let isCursorDiv = cursorIndex >= start && cursorIndex < end;
+
+        if(isCursorDiv) 
+        { 
+            console.log("start : " + start + " end : " + end); 
+            let localOffset = Math.min(0,(cursorIndex - start));
+
+            HTMLNode.setAttribute("id", 'cursorDiv');
+            HTMLNode.setAttribute("cursor-offset", localOffset);
+        }*/
+
+        return HTMLNode;
+    }
+    
+    return document.createTextNode("");
+
 }
 
 const matchToken = 
 {
     "{" : "open_bracket",
     "}" : "close_bracket",
+    ";" : "semicolon",
+    "," : "comma",
+    '"' : "quote",
     "import" : "import",
     "from" : "from",
-    "export default" : "export",
+    "export" : "export",
+    "default" : "default",
     "if" : "if",
     "const" : "const",
     "static" : "static",
     "return" : "return"
- 
-}
-
-function getRandomColor() 
-{
-    var letters = '0123456789ABCDEF';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
 }
