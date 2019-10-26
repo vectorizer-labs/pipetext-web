@@ -45,7 +45,7 @@ export function buildHTMLNode2(cursor, srcString, self)
                 ,cursor.endIndex)));
         }
 
-    } else firstNode.innerText = srcString.substring(cursor.startIndex, cursor.endIndex);
+    } else firstNode.textContent = srcString.substring(cursor.startIndex, cursor.endIndex);
     
     return firstNode;   
 }
@@ -73,8 +73,6 @@ function buildNode(cursor, srcString, self)
         getInbetweenTags(srcString, cursor.startIndex, cursor.endIndex, null) : 
         document.createElement(displayName);
 
-    HTMLNode.contentEditable = true;
-    
     HTMLNode.setAttribute("fieldName", fieldName);
 
     //ROW

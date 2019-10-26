@@ -2,7 +2,7 @@ import { buildHTMLNode2 } from "./recursive-tree-builder.mjs";
 
 import { Docstate } from "./ot-core.mjs";
 
-import { input_handler } from "./input.mjs";
+import { handle_input } from "./input.mjs";
 
 class PipeText
 {
@@ -16,7 +16,7 @@ class PipeText
         
         //move initial text to code div
         this.codeDiv = document.createElement('code');
-        //this.codeDiv.contentEditable = true;
+        this.codeDiv.contentEditable = true;
         this.codeDiv.style = "white-space: pre;"
         this.codeDiv.innerHTML = this.div.innerHTML;
 
@@ -27,25 +27,26 @@ class PipeText
 
         this.lastTextContent = this.codeDiv.textContent;
 
-        this.docState = new Docstate(this.lastTextContent);
+        //this.docState = new Docstate(this.lastTextContent);
 
         let self = this;
 
         this.observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
-              console.log(mutation);
+                handle_input(self,mutation);
             });
         });
 
+        self.observer.observe(this.codeDiv, 
+            {
+                subtree : true,
+                childList: true,
+                characterData: true
+            });
+
         this.init(self, "javascript").then((p) => console.log("initialized"));
 
-        self.observer.observe(this.codeDiv, 
-        {
-            attributes: true,
-            subtree : true,
-            childList: true,
-            characterData: true
-        });
+        
 
     }
 
@@ -69,36 +70,41 @@ class PipeText
         
     }
 
-    async refreshState(self, beginningOffset)
+    async refreshState(self)
     {
+
+        var t0 = performance.now();
+
         self.observer.disconnect();
 
         await self.parse(self);
 
-        let lineNumbers = await self.refreshCodeTree(self, beginningOffset);
+        let lineNumbers = await self.refreshCodeTree(self);
 
         await self.refreshLineNums(lineNumbers,self);
 
         self.observer.observe(self.codeDiv, 
-            {
-                attributes: true,
-                subtree : true,
-                childList: true,
-                characterData: true
-            });
+        {
+            subtree : true,
+            childList: true,
+            characterData: true
+        });
+
+        var t1 = performance.now();
+        console.log("Rebuild took " + (t1 - t0) + " milliseconds.");
 
         //console.log(document.getElementById("cursorDiv"));
     }
 
-    async parse(self) { self.tree = self.parser.parse(self.docState.get_str(), null); }
+    async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, null); }
 
-    async refreshCodeTree(self, cursorIndex)
+    async refreshCodeTree(self)
     {
         const cursor = self.tree.walk();
 
+        let rootnode = buildHTMLNode2(cursor, self.codeDiv.textContent, self);
+
         self.codeDiv.innerHTML = "";
-    
-        let rootnode = buildHTMLNode2(cursor, self.docState.get_str(), self);
 
         self.codeDiv.appendChild(rootnode);
 

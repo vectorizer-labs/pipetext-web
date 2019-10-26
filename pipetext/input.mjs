@@ -1,5 +1,13 @@
 export async function handle_input(self, mutation)
 {
+
+    console.log(mutation);
+    /*
+    let beginningOffset = getCaretCharacterOffsetWithin(self.codeDiv);
+    let diff = getDiff(self.lastTextContent, self.codeDiv.textContent, beginningOffset);
+
+
+    //TODO: be less dumb and find the actual indices and get incremental parsing working
     let start, end, startRow, startColumn, endRow, endColumn;
     let element = mutation.target; 
 
@@ -16,20 +24,23 @@ export async function handle_input(self, mutation)
 
         startRow = element.getAttribute("startrow");
         startColumn = element.getAttribute("startcolumn");
-        endRow = element.getAttribute();
-        endColumn = element.getAttribute();
+        endRow = element.getAttribute("endrow");
+        endColumn = element.getAttribute("endcolumn");
     }
 
     let initalTextLength = (end - start);
 
+    
     await self.tree.edit({
-        startIndex: start,
-        oldEndIndex: end,
-        newEndIndex: start + element.textContent.length,
-        startPosition: {row: 0, column: 0},
-        oldEndPosition: {row: 0, column: 3},
-        newEndPosition: {row: 0, column: 5},
-      });
+        startIndex: 0,
+        oldEndIndex: self.codeDiv.getAttribute("endIndex"),
+        newEndIndex: self.codeDiv.textContent.length,
+        startPosition: {row: startRow, column: startColumn},
+        oldEndPosition: {row: endRow, column: endColumn},
+        newEndPosition: {row: endRow, column: startColumn + element.textContent.length},
+    });*/
+
+    await self.refreshState(self);
 
 }
 
@@ -86,41 +97,6 @@ export async function input_handler(self, event)
 
     self.lastTextContent = self.codeDiv.textContent;
       */
-}
-
-function findElementFromRange(beginningElement, endElement, range)
-{
-    let start = beginningElement.getAttribute("startIndex");
-    let end = endElement.getAttribute("endIndex");
-
-    //if the range we're looking for is inside the currentElement then we need to descend
-    if(start <= range[0] && end >= range[1])
-    {
-        return [beginningElement, endElement];
-    }
-    //if the range we're looking for is inside the currentElement then we need to descend
-    else if(start <= range[0] && end >= range[1] && beginningElement === endElement)
-    {
-        return findElementFromRange(
-            beginningElement.firstChild, 
-            beginningElement.lastChild,
-            range);
-    }
-
-    //TODO HANDLE THE CONTRCTIVE SEARCH INSIDE CHILDREN
-    //the range lands in the parent node or previous sibling
-    // and the end is inside this node
-    else if(start > range[0] && end >= range[1])
-    {
-        return currentElement.parentElement;
-    }
-    //the range start is inside this node but the range end is outside 
-    else if(start <= range[0] && end < range[1])
-    {
-        
-    }else /*if (start > range[0] && end < range[1]) */{
-
-    } 
 }
 
 function getCaretCharacterOffsetWithin(element) {
