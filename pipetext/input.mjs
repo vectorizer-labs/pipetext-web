@@ -1,102 +1,64 @@
-export async function handle_input(self, mutation)
+export async function handle_input(self)
 {
+    //if(mutation.type == "childList") return;
+    //console.log(mutation);
 
-    console.log(mutation);
-    /*
-    let beginningOffset = getCaretCharacterOffsetWithin(self.codeDiv);
-    let diff = getDiff(self.lastTextContent, self.codeDiv.textContent, beginningOffset);
+    let cursorIndex = getCaretCharacterOffsetWithin(self.codeDiv);
 
+    //let edit = getEditFromElement(self, mutation);
+    let diff = getDiff(self.lastTextContent, self.codeDiv.textContent,cursorIndex);
 
-    //TODO: be less dumb and find the actual indices and get incremental parsing working
-    let start, end, startRow, startColumn, endRow, endColumn;
-    let element = mutation.target; 
+    console.log(diff);
 
-    //If we're in a text node we need to find out our starting index
-    if( element.nodeType === Node.TEXT_NODE) 
-    {
+    let startLines = self.lastTextContent.substring(0, diff[0]).split(/\r\n|\r|\n/);
+    let endLines = self.lastTextContent.substring(0, diff[1]).split(/\r\n|\r|\n/);
 
-    }
-    else
-    {
-        //otherwise we just get it straight from the node
-        start = element.getAttribute("startindex");
-        end = element.getAttribute("endindex");
+    let startRow = startLines.length-1;
+    let endRow = endLines.length-1;
 
-        startRow = element.getAttribute("startrow");
-        startColumn = element.getAttribute("startcolumn");
-        endRow = element.getAttribute("endrow");
-        endColumn = element.getAttribute("endcolumn");
-    }
+    let startColumn = startLines[startRow-1].length-1;
+    let endColumn = endLines[endRow-1].length-1;
 
-    let initalTextLength = (end - start);
+    let deltaRow = diff[2].split(/\r\n|\r|\n/);
+    let deltaRowLength = deltaRow.length - 1;
 
-    
-    await self.tree.edit({
-        startIndex: 0,
-        oldEndIndex: self.codeDiv.getAttribute("endIndex"),
-        newEndIndex: self.codeDiv.textContent.length,
+    let length = deltaRow[deltaRowLength].length-1;
+
+    //if we're on the same line add the length
+    let deltaColumn = (deltaRowLength > 0) ?  length : startColumn + length;
+
+    let edit = {
+        startIndex: diff[0],
+        oldEndIndex: diff[1],
+        newEndIndex: diff[1] + diff[2].length,
         startPosition: {row: startRow, column: startColumn},
         oldEndPosition: {row: endRow, column: endColumn},
-        newEndPosition: {row: endRow, column: startColumn + element.textContent.length},
-    });*/
+        newEndPosition: {row: startRow + deltaRowLength, column: startColumn + deltaColumn },
+    };
 
+    //printEditString(self.codeDiv,edit);
+
+    console.log(edit);
+
+    await self.tree.edit(edit); 
     await self.refreshState(self);
 
+    //put back cursor
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-export async function input_handler(self, event)
-{
-    let start = performance.now();
-    let beginningOffset = getCaretCharacterOffsetWithin(self.codeDiv);
-    let diff = getDiff(self.lastTextContent, self.codeDiv.textContent, beginningOffset);
-
-    findElementFromRange(self,diff);
-
-    let ops = diffToOps(diff, self.docState);
-    // apply ops locally
-    for (var i = 0; i < ops.length; i++) {
-        self.docState.add(ops[i]);
+function getDiff(oldText, newText, cursor) {
+    var delta = newText.length - oldText.length;
+    var limit = Math.max(0, cursor - delta);
+    var end = oldText.length;
+    while (end > limit && oldText.charAt(end - 1) == newText.charAt(end + delta - 1)) {
+        end -= 1;
     }
-    
-    //console.log('ops:' + JSON.stringify(ops));
-    //console.log('docstate: ' + self.docState.get_str());
-
-    await self.refreshState(self.codeDiv.firstChild, beginningOffset);
-
-    /*
-    
-
-    //console.log(beginningOffset);
-    await self.refreshState(self, beginningOffset);
-      
-    let cursorDiv = document.getElementById("cursorDiv");
-    let localOffset = cursorDiv.getAttribute("cursor-offset");
-
-    let range = document.createRange();
-    range.setStart(cursorDiv, localOffset);
-    range.setEnd(cursorDiv, localOffset);
-    
-    window.getSelection().removeAllRanges();
-    window.getSelection().addRange(range);
-    const duration = (performance.now() - start).toFixed(1);
-    console.log(`parsed in ${duration} ms`);
-
-    self.lastTextContent = self.codeDiv.textContent;
-      */
+    var start = 0;
+    var startLimit = cursor - Math.max(0, delta);
+    while (start < startLimit && oldText.charAt(start) == newText.charAt(start)) {
+        start += 1;
+    }
+    return [start, end, newText.slice(start, end + delta)];
 }
 
 function getCaretCharacterOffsetWithin(element) {
@@ -123,20 +85,7 @@ function getCaretCharacterOffsetWithin(element) {
     return caretOffset;
 }
 
-function getDiff(oldText, newText, cursor) {
-    var delta = newText.length - oldText.length;
-    var limit = Math.max(0, cursor - delta);
-    var end = oldText.length;
-    while (end > limit && oldText.charAt(end - 1) == newText.charAt(end + delta - 1)) {
-        end -= 1;
-    }
-    var start = 0;
-    var startLimit = cursor - Math.max(0, delta);
-    while (start < startLimit && oldText.charAt(start) == newText.charAt(start)) {
-        start += 1;
-    }
-    return [start, end, newText.slice(start, end + delta)];
-}
+
 
 var pri = Math.floor(Math.random() * 0x1000000);
 var ser = 0;

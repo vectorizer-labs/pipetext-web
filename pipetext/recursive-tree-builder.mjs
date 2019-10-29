@@ -3,6 +3,8 @@ export function buildHTMLNode2(cursor, srcString, self)
     //we enter into this level as the first node on the left
     var firstNode = buildNode(cursor, srcString, self);
 
+    //if(firstNode.nodeType == Node.TEXT_NODE) return firstNode;
+
     //We need to go to the first child before passing down to the buildHTMLNode2 recursively
     if(cursor.gotoFirstChild())
     {
@@ -52,13 +54,8 @@ export function buildHTMLNode2(cursor, srcString, self)
 
 function buildNode(cursor, srcString, self)
 {
-    let displayName;
-    if (cursor.nodeIsMissing) {
-        displayName = `MISSING ${cursor.nodeType}`;
-    } else if (cursor.nodeIsNamed) {
-        displayName = cursor.nodeType;
-    }
-
+    let displayName = cursor.nodeIsNamed ? cursor.nodeType : undefined;
+    
     const start = cursor.startPosition;
     const end = cursor.endPosition;
     const id = cursor.nodeId;
@@ -73,6 +70,11 @@ function buildNode(cursor, srcString, self)
         getInbetweenTags(srcString, cursor.startIndex, cursor.endIndex, null) : 
         document.createElement(displayName);
 
+    //in case a node is deleted
+    if (HTMLNode.nodeType == Node.TEXT_NODE) return HTMLNode;
+
+    if (cursor.nodeIsMissing) HTMLNode.id == "missing";
+    
     HTMLNode.setAttribute("fieldName", fieldName);
 
     //ROW
@@ -130,6 +132,8 @@ const matchToken =
 {
     "{" : "open_bracket",
     "}" : "close_bracket",
+    "(" : "open_paren",
+    ")" : "close_paren",
     ";" : "semicolon",
     "," : "comma",
     '"' : "quote",
@@ -140,5 +144,6 @@ const matchToken =
     "if" : "if",
     "const" : "const",
     "static" : "static",
-    "return" : "return"
+    "return" : "return",
+    "function" : "function_keyword"
 }

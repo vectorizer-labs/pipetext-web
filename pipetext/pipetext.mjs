@@ -29,25 +29,61 @@ class PipeText
 
         //this.docState = new Docstate(this.lastTextContent);
 
+        this.init_listener_hacks()
+
         let self = this;
 
+        //make sure plain text only is pasted
+        this.codeDiv.addEventListener("input", function(e) 
+        {
+            handle_input(self);
+        });
+
+        /*
         this.observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
                 handle_input(self,mutation);
             });
         });
 
-        self.observer.observe(this.codeDiv, 
+        this.observer.observe(this.codeDiv, 
             {
                 subtree : true,
                 childList: true,
                 characterData: true
             });
-
+            */
         this.init(self, "javascript").then((p) => console.log("initialized"));
 
-        
+    }
 
+    
+    init_listener_hacks()
+    {
+        //make sure plain text only is pasted
+        this.codeDiv.addEventListener("paste", function(e) {
+            // cancel paste
+            e.preventDefault();
+        
+            // get text representation of clipboard
+            var text = (e.originalEvent || e).clipboardData.getData('text/plain');
+        
+            // insert text manually
+            document.execCommand("insertHTML", false, text);
+        });
+
+        //hack to make sure enters register
+        this.codeDiv.addEventListener("keydown",function(e) {
+            // trap the return key being pressed
+            if (e.keyCode == 13) {
+                // cancel paste
+                e.preventDefault();
+              // insert 2 br tags (if only one br tag is inserted the cursor won't go to the next line)
+              document.execCommand('insertHTML', false, '\r\n');
+              // prevent the default behaviour of return key pressed
+              return false;
+            }
+          });
     }
 
     async init(self, language)
@@ -73,30 +109,38 @@ class PipeText
     async refreshState(self)
     {
 
+        //self.observer.disconnect();
+
         var t0 = performance.now();
 
-        self.observer.disconnect();
-
         await self.parse(self);
+
+        var t1 = performance.now();
+        console.log("Parse took " + (t1 - t0) + " milliseconds.");
 
         let lineNumbers = await self.refreshCodeTree(self);
 
         await self.refreshLineNums(lineNumbers,self);
 
+        var t2 = performance.now();
+        console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
+
+        console.log("Total " + (t2 - t0) + " milliseconds.");
+
+        /*
         self.observer.observe(self.codeDiv, 
         {
             subtree : true,
             childList: true,
             characterData: true
-        });
+        });*/
 
-        var t1 = performance.now();
-        console.log("Rebuild took " + (t1 - t0) + " milliseconds.");
+        self.lastTextContent = self.codeDiv.textContent;
 
         //console.log(document.getElementById("cursorDiv"));
     }
 
-    async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, null); }
+    async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, self.tree); }
 
     async refreshCodeTree(self)
     {
