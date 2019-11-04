@@ -1,14 +1,14 @@
 export async function handle_input(self)
 {
-    //if(mutation.type == "childList") return;
-    //console.log(mutation);
+    let newText = self.codeDiv.textContent;
 
     let cursorIndex = getCaretCharacterOffsetWithin(self.codeDiv);
 
-    //let edit = getEditFromElement(self, mutation);
-    let diff = getDiff(self.lastTextContent, self.codeDiv.textContent,cursorIndex);
+    let diff = getDiffOrigin(self.lastTextContent, newText, cursorIndex);
 
-    console.log(diff);
+    //console.log(diff);
+
+    let length = Math.max(0, newText.length - self.lastTextContent.length);
 
     let startLines = self.lastTextContent.substring(0, diff[0]).split(/\r\n|\r|\n/);
     let endLines = self.lastTextContent.substring(0, diff[1]).split(/\r\n|\r|\n/);
@@ -16,13 +16,11 @@ export async function handle_input(self)
     let startRow = startLines.length-1;
     let endRow = endLines.length-1;
 
-    let startColumn = startLines[startRow-1].length-1;
-    let endColumn = endLines[endRow-1].length-1;
+    let startColumn = startLines[startRow].length;
+    let endColumn = endLines[endRow].length;
 
     let deltaRow = diff[2].split(/\r\n|\r|\n/);
     let deltaRowLength = deltaRow.length - 1;
-
-    let length = deltaRow[deltaRowLength].length-1;
 
     //if we're on the same line add the length
     let deltaColumn = (deltaRowLength > 0) ?  length : startColumn + length;
@@ -30,23 +28,56 @@ export async function handle_input(self)
     let edit = {
         startIndex: diff[0],
         oldEndIndex: diff[1],
-        newEndIndex: diff[1] + diff[2].length,
+        newEndIndex: diff[0] + diff[2].length,
         startPosition: {row: startRow, column: startColumn},
-        oldEndPosition: {row: endRow, column: endColumn},
-        newEndPosition: {row: startRow + deltaRowLength, column: startColumn + deltaColumn },
+        oldEndPosition: {row: endRow, column: endColumn },
+        newEndPosition: {row: startRow + deltaRowLength, column: deltaColumn},
     };
 
-    //printEditString(self.codeDiv,edit);
+    //console.log(edit);
 
-    console.log(edit);
+    //console.log(cursorIndex);
 
     await self.tree.edit(edit); 
-    await self.refreshState(self);
 
-    //put back cursor
+    await self.refreshState(self, cursorIndex);
+
+    placeCursorBack();
+
 }
 
-function getDiff(oldText, newText, cursor) {
+function placeCursorBack()
+{
+    let cursorDiv = document.getElementById("cursorDiv");
+    console.log(cursorDiv);
+    var range = document.createRange();
+
+    let content  = cursorDiv.childNodes[0];
+
+    console.log(content);
+    range.setStart(content, cursorDiv.getAttribute("cursor-offset"));
+    range.collapse(true);
+
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);   
+}
+
+function clearSelectionPFill()
+{
+    if (window.getSelection) {
+        if (window.getSelection().empty) {  // Chrome
+          window.getSelection().empty();
+        } else if (window.getSelection().removeAllRanges) {  // Firefox
+          window.getSelection().removeAllRanges();
+        }
+     } else if (document.selection) {  // IE?
+       document.selection.empty();
+     }
+}
+
+
+function getDiffOrigin(oldText, newText, cursor) {
     var delta = newText.length - oldText.length;
     var limit = Math.max(0, cursor - delta);
     var end = oldText.length;
@@ -67,13 +98,15 @@ function getCaretCharacterOffsetWithin(element) {
     var win = doc.defaultView || doc.parentWindow;
     var sel;
     if (typeof win.getSelection != "undefined") {
+        
         sel = win.getSelection();
         if (sel.rangeCount > 0) {
+            //console.log("big gainz!");
             var range = win.getSelection().getRangeAt(0);
             var preCaretRange = range.cloneRange();
             preCaretRange.selectNodeContents(element);
-            preCaretRange.setEnd(range.endContainer, range.endOffset);
-            caretOffset = preCaretRange.toString().length;
+            preCaretRange.setEnd(range.startContainer, range.startOffset);
+            return preCaretRange.toString().length;
         }
     } else if ( (sel = doc.selection) && sel.type != "Control") {
         var textRange = sel.createRange();
@@ -85,25 +118,14 @@ function getCaretCharacterOffsetWithin(element) {
     return caretOffset;
 }
 
-
-
-var pri = Math.floor(Math.random() * 0x1000000);
-var ser = 0;
-function getid() {
-    return (pri * 0x100000) + ser++;
-}
-
-function diffToOps(diff, docState) {
-    var start = diff[0];
-    var end = diff[1];
-    var newstr = diff[2];
-    var result = [];
-    for (var i = start; i < end; i++) {
-        result.push({pri: pri, ty: 'del', ix: docState.xform_ix(i), id: getid()});
+function debugPrintString(lineString)
+{
+    let numString = "";
+    for(var i =0; i < lineString.length; i++)
+    {
+        numString += "" + i + "";
     }
-    var ix = docState.xform_ix(end);
-    for (var i = 0; i < newstr.length; i++) {
-        result.push({pri: pri, ty: 'ins', ix: ix + i, id: getid(), ch: newstr.charAt(i)});
-    }
-    return result;
+
+    console.log(numString + "\r\n" + lineString);
+
 }

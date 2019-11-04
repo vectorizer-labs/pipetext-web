@@ -29,61 +29,19 @@ class PipeText
 
         //this.docState = new Docstate(this.lastTextContent);
 
-        this.init_listener_hacks()
+        //this.init_listener_hacks()
 
         let self = this;
 
         //make sure plain text only is pasted
         this.codeDiv.addEventListener("input", function(e) 
         {
+            //console.log(e);
             handle_input(self);
         });
 
-        /*
-        this.observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                handle_input(self,mutation);
-            });
-        });
-
-        this.observer.observe(this.codeDiv, 
-            {
-                subtree : true,
-                childList: true,
-                characterData: true
-            });
-            */
         this.init(self, "javascript").then((p) => console.log("initialized"));
 
-    }
-
-    
-    init_listener_hacks()
-    {
-        //make sure plain text only is pasted
-        this.codeDiv.addEventListener("paste", function(e) {
-            // cancel paste
-            e.preventDefault();
-        
-            // get text representation of clipboard
-            var text = (e.originalEvent || e).clipboardData.getData('text/plain');
-        
-            // insert text manually
-            document.execCommand("insertHTML", false, text);
-        });
-
-        //hack to make sure enters register
-        this.codeDiv.addEventListener("keydown",function(e) {
-            // trap the return key being pressed
-            if (e.keyCode == 13) {
-                // cancel paste
-                e.preventDefault();
-              // insert 2 br tags (if only one br tag is inserted the cursor won't go to the next line)
-              document.execCommand('insertHTML', false, '\r\n');
-              // prevent the default behaviour of return key pressed
-              return false;
-            }
-          });
     }
 
     async init(self, language)
@@ -97,62 +55,63 @@ class PipeText
         try { language = await TreeSitter.Language.load(url); } 
         catch (e) { console.error(e); return; }
 
-        console.log(self);
-
         self.parser.setLanguage(language);
         self.tree = null;
 
-        await self.refreshState(self,0);
+        await self.refreshState(self);
         
     }
 
-    async refreshState(self)
+    async refreshState(self, cursorIndex)
     {
-
-        //self.observer.disconnect();
-
+        console.log(cursorIndex);
         var t0 = performance.now();
 
         await self.parse(self);
 
         var t1 = performance.now();
-        console.log("Parse took " + (t1 - t0) + " milliseconds.");
+        //console.log("Parse took " + (t1 - t0) + " milliseconds.");
 
-        let lineNumbers = await self.refreshCodeTree(self);
+        let lineNumbers = await self.refreshCodeTree(self, cursorIndex);
 
         await self.refreshLineNums(lineNumbers,self);
 
         var t2 = performance.now();
-        console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
+        //console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
 
         console.log("Total " + (t2 - t0) + " milliseconds.");
 
-        /*
-        self.observer.observe(self.codeDiv, 
-        {
-            subtree : true,
-            childList: true,
-            characterData: true
-        });*/
-
         self.lastTextContent = self.codeDiv.textContent;
-
-        //console.log(document.getElementById("cursorDiv"));
     }
 
     async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, self.tree); }
 
-    async refreshCodeTree(self)
+    async debugParse(self) 
+    { 
+
+        let sourceLines = self.codeDiv.textContent.split(/(\r\n)|(\r)|(\n)/);
+
+        self.tree = self.parser.parse((index, position) => {
+            console.log("Index : " + index);
+            console.log("Position : " + position.row + " : " + position.column);
+            let parseableString = self.codeDiv.textContent.slice(index);
+            console.log(parseableString);
+            return parseableString;
+          }, self.tree); 
+
+    }
+
+    async refreshCodeTree(self, cursorIndex)
     {
         const cursor = self.tree.walk();
 
-        let rootnode = buildHTMLNode2(cursor, self.codeDiv.textContent, self);
+        let rootnode = buildHTMLNode2(cursor, self.codeDiv.textContent, self, cursorIndex);
 
         self.codeDiv.innerHTML = "";
 
         self.codeDiv.appendChild(rootnode);
 
-        console.log(rootnode.getAttribute("endRow"));
+        //console.log(rootnode.getAttribute("endRow"));
 
         return rootnode.getAttribute("endRow");
     }
@@ -160,13 +119,34 @@ class PipeText
     async refreshLineNums(lines,self)
     {
         self.lineDiv.innerHTML = "";
-        for(var i = 1; i <= lines; i++)
+        for(var i = 0; i <= lines; i++)
         {
             let line = document.createElement('line');
-            line.textContent = i.toString();
+            line.textContent = (i+1).toString();
             self.lineDiv.appendChild(line);
         }
     }
+}
+
+function getSelectionRangeWithin(element) {
+    var doc = element.ownerDocument || element.document;
+    var win = doc.defaultView || doc.parentWindow;
+    var sel;
+    sel = win.getSelection();
+    if (sel.rangeCount > 0) 
+    {
+        var range = win.getSelection().getRangeAt(0);
+        var preCaretRange = range.cloneRange();
+
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.startContainer, range.startOffset);
+        let startIndex = preCaretRange.toString().length;
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        let endIndex = preCaretRange.toString().length;
+
+        return [startIndex,endIndex];
+    }
+    return [0,0];
 }
 
 
