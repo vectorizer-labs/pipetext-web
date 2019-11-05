@@ -1,10 +1,8 @@
 export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
 {
     //we enter into this level as the first node on the left
-    var firstNode = buildNode(cursor, srcString, self, cursorIndex);
+    let firstNode = buildNode(cursor, srcString, self, cursorIndex);
     if(firstNode == null) return null;
-
-    firstNode = processTextNode(cursor, srcString, firstNode, cursorIndex);
 
     //if(firstNode.nodeType == Node.TEXT_NODE) return firstNode;
 
@@ -15,9 +13,12 @@ export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
 
         if(firstNode.getAttribute("startIndex"))
         {
-            firstNode.appendChild(document.createTextNode(srcString.substring(
-                firstNode.getAttribute("startIndex")
-                ,cursor.startIndex)));
+            let whiteSpaceDiv = processWhitespace(
+                srcString,
+                firstNode.getAttribute("startIndex"),
+                cursor.startIndex,
+                cursorIndex);
+            if(whiteSpaceDiv) firstNode.appendChild(whiteSpaceDiv);
         }
 
         //cursor is now at first child so we pass it down
@@ -28,10 +29,13 @@ export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
             //determine if a space exists between the last_child and this child
             if(last_child.getAttribute("endIndex"))
             {
-                firstNode.appendChild(document.createTextNode(srcString.substring(
-                    last_child.getAttribute("endIndex")
-                    ,cursor.startIndex)));
+                let whiteSpaceDiv = processWhitespace(
+                    srcString,
+                    last_child.getAttribute("endIndex"),
+                    cursor.startIndex,
+                    cursorIndex);
 
+                if(whiteSpaceDiv) firstNode.appendChild(whiteSpaceDiv);
             }
 
             last_child = buildHTMLNode2(cursor, srcString, self, cursorIndex);
@@ -45,9 +49,12 @@ export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
         //determine if a space exists between the last_child and the end of the parent
         if(last_child != null && last_child.getAttribute("endIndex"))
         {
-            firstNode.appendChild(document.createTextNode(srcString.substring(
-                last_child.getAttribute("endIndex")
-                ,cursor.endIndex)));
+            let whiteSpaceDiv = processWhitespace(
+                srcString,
+                last_child.getAttribute("endIndex"),
+                cursor.endIndex,
+                cursorIndex);
+            if(whiteSpaceDiv) firstNode.appendChild(whiteSpaceDiv);
         }
     }
     
@@ -56,7 +63,6 @@ export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
 
 function buildNode(cursor, srcString, self, cursorIndex)
 {
-
     let displayName = cursor.nodeIsNamed ? cursor.nodeType : undefined;
 
     if(cursor.currentNode().hasError())
@@ -68,8 +74,6 @@ function buildNode(cursor, srcString, self, cursorIndex)
     const start = cursor.startPosition;
     const end = cursor.endPosition;
     const id = cursor.nodeId;
-
-    
 
     let HTMLNode = (displayName == undefined) ? 
         getInbetweenTags(srcString, cursor.startIndex, cursor.endIndex, null) : 
@@ -103,6 +107,8 @@ function buildNode(cursor, srcString, self, cursorIndex)
 
     HTMLNode.setAttribute("nodeId", id);
 
+    HTMLNode = processTextNode(cursor, srcString, HTMLNode, cursorIndex);
+
     return HTMLNode;
 }
 
@@ -126,7 +132,7 @@ function processTextNode(cursor, srcString, HTMLNode, cursorIndex)
         cursorSelect.textContent = srcString.substring(cursor.startIndex, cursor.endIndex);
 
         HTMLNode.appendChild(cursorSelect);
-    } 
+    }
     //If the node has no children then the content is just text
     else if(hasNoChildren)
     {
@@ -147,13 +153,38 @@ function getInbetweenTags(srcString, start, end)
 
         let HTMLNode = document.createElement(tag);
 
-        HTMLNode.textContent = betweenBits;
-
         return HTMLNode;
     }
     
     return document.createTextNode("");
 
+}
+
+function processWhitespace(srcString, startIndex, endIndex, cursorIndex)
+{
+    let whiteSpaceDiv = document.createElement("whitespace");
+    let whitespaceString = srcString.substring(startIndex, endIndex);
+    if(whitespaceString != "")
+    {
+        whiteSpaceDiv.textContent = whitespaceString;
+
+        //console.log(cursorIndex);
+        let isCursorDiv = (cursorIndex >= startIndex) && (cursorIndex < endIndex);
+        
+        //add cursor attributes if this is the cursor div
+        if(isCursorDiv) 
+        { 
+            console.log("start : " + startIndex + " end : " + endIndex); 
+            let localOffset = cursorIndex - startIndex;
+
+            whiteSpaceDiv.id = "cursorDiv";
+            whiteSpaceDiv.setAttribute("cursor-offset", localOffset);
+        }
+
+        return whiteSpaceDiv;
+    }
+    return null;
+    
 }
 
 const matchToken = 
