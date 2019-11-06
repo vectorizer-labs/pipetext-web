@@ -40,6 +40,15 @@ export async function handle_input(self)
 
     await self.tree.edit(edit); 
 
+    if(self.lastTree)
+    {
+        console.log("TREE");
+        console.log(self.lastTree);
+        let changes = await self.tree.getChangedRanges(self.lastTree); 
+        console.log(changes);
+    }
+    
+
     await self.refreshState(self, cursorIndex);
 
     placeCursorBack();
@@ -49,12 +58,11 @@ export async function handle_input(self)
 function placeCursorBack()
 {
     let cursorDiv = document.getElementById("cursorDiv");
-    console.log(cursorDiv);
+    //console.log(cursorDiv);
     var range = document.createRange();
 
     let content  = cursorDiv.childNodes[0];
 
-    console.log(content);
     range.setStart(content, cursorDiv.getAttribute("cursor-offset"));
     range.collapse(true);
 

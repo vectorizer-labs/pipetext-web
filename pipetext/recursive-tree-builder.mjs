@@ -4,6 +4,9 @@ export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
     let firstNode = buildNode(cursor, srcString, self, cursorIndex);
     if(firstNode == null) return null;
 
+    let hasChange = cursor.currentNode().hasChanges();
+    if(hasChange) console.log(hasChange);
+
     //if(firstNode.nodeType == Node.TEXT_NODE) return firstNode;
 
     //We need to go to the first child before passing down to the buildHTMLNode2 recursively
@@ -63,17 +66,22 @@ export function buildHTMLNode2(cursor, srcString, self, cursorIndex)
 
 function buildNode(cursor, srcString, self, cursorIndex)
 {
+
+    if (cursor.nodeIsMissing) return null;
+
     let displayName = cursor.nodeIsNamed ? cursor.nodeType : undefined;
 
     if(cursor.currentNode().hasError())
     {
-        console.error("Current Node has error!");
-        //console.log(cursor.currentNode());
+        console.error("There was syntax error: The following Node has an error!");
+        console.log(cursor.currentNode());
     }
 
     const start = cursor.startPosition;
     const end = cursor.endPosition;
     const id = cursor.nodeId;
+
+    
 
     let HTMLNode = (displayName == undefined) ? 
         getInbetweenTags(srcString, cursor.startIndex, cursor.endIndex, null) : 
@@ -81,17 +89,6 @@ function buildNode(cursor, srcString, self, cursorIndex)
 
     let fieldName = cursor.currentFieldName();
     if (fieldName) HTMLNode.setAttribute("fieldName", fieldName);
-
-    //in case a node is deleted
-    if (HTMLNode.nodeType == Node.TEXT_NODE) console.log(cursor);
-
-    if (cursor.nodeIsMissing)
-    {
-        //console.log("MISSING");
-        //console.log(cursor);
-        HTMLNode.id == "missing";
-        return null;
-    }
     
     //ROW
     HTMLNode.setAttribute("startRow", start.row);
@@ -122,7 +119,7 @@ function processTextNode(cursor, srcString, HTMLNode, cursorIndex)
     //Only if this node has no children
     if(isCursorDiv && hasNoChildren) 
     { 
-        console.log("start : " + cursor.startIndex + " end : " + cursor.endIndex); 
+        //console.log("start : " + cursor.startIndex + " end : " + cursor.endIndex); 
         let localOffset = cursorIndex - cursor.startIndex;
 
         let cursorSelect = document.createElement("cursor");
@@ -174,7 +171,7 @@ function processWhitespace(srcString, startIndex, endIndex, cursorIndex)
         //add cursor attributes if this is the cursor div
         if(isCursorDiv) 
         { 
-            console.log("start : " + startIndex + " end : " + endIndex); 
+            //console.log("start : " + startIndex + " end : " + endIndex); 
             let localOffset = cursorIndex - startIndex;
 
             whiteSpaceDiv.id = "cursorDiv";

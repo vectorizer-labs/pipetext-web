@@ -1,4 +1,4 @@
-import { buildHTMLNode2 } from "./recursive-tree-builder.mjs";
+import { buildNode } from "./recursive-tree-builder2.mjs";
 
 import { Docstate } from "./ot-core.mjs";
 
@@ -64,10 +64,10 @@ class PipeText
 
     async refreshState(self, cursorIndex)
     {
-        console.log(cursorIndex);
+        //console.log(cursorIndex);
         var t0 = performance.now();
 
-        await self.parse(self);
+        await self.incrementalParse(self);
 
         var t1 = performance.now();
         //console.log("Parse took " + (t1 - t0) + " milliseconds.");
@@ -85,6 +85,12 @@ class PipeText
     }
 
     async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, self.tree); }
+
+    async incrementalParse(self) 
+    { 
+        if(self.tree) self.lastTree = self.tree;
+        self.tree = self.parser.parse(self.codeDiv.textContent, self.tree); 
+    }
 
     async debugParse(self) 
     { 
@@ -105,11 +111,11 @@ class PipeText
     {
         const cursor = self.tree.walk();
 
-        let rootnode = buildHTMLNode2(cursor, self.codeDiv.textContent, self, cursorIndex);
+        let rootnode = buildNode(cursor, self.codeDiv.textContent, cursorIndex);
 
         self.codeDiv.innerHTML = "";
 
-        self.codeDiv.appendChild(rootnode);
+        self.codeDiv.appendChild(rootnode.HTMLNode);
 
         //console.log(rootnode.getAttribute("endRow"));
 
