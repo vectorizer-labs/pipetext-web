@@ -5,22 +5,9 @@ export function buildNode(cursor, srcString, cursorIndex)
     let parentNode = buildLogicalNode(cursor, srcString,cursorIndex);
 
     //if the parentNode has children go get them!
-    if(!parentNode.hasNoChildren){
+    if(cursor.gotoFirstChild()){
         parentNode.children = [];
-
         let childIndex = 0;
-
-        //go to the firstchild of the parent
-        //throw error if it doesn't work for some reason
-        if(!cursor.gotoFirstChild()) console.error("Tried to get child but this node has no children.");
-
-        //if there's whitespace between the beginning of the parent and the first node push it
-        let whiteSpaceDiv = processWhitespace(srcString, parentNode.startIndex, cursor.startIndex, cursorIndex);
-        if(whiteSpaceDiv != null)
-        {
-            parentNode.children.push(whiteSpaceDiv);
-            childIndex += 1;
-        }
 
         parentNode.children.push(buildNode(cursor, srcString, cursorIndex));
         childIndex += 1;
@@ -30,11 +17,13 @@ export function buildNode(cursor, srcString, cursorIndex)
             let last_sibling = parentNode.children[childIndex-1];
 
             //determine if a space exists between the last_sibling and this child
-            if(last_sibling != null && last_sibling.endIndex)
+            if(last_sibling != null && last_sibling.endIndex != undefined)
             {
                 let whiteSpaceDiv = processWhitespace(srcString, last_sibling.endIndex, cursor.startIndex, cursorIndex);
-                if(whiteSpaceDiv) parentNode.children.push(whiteSpaceDiv);
-                childIndex += 1;
+                //console.log(whiteSpaceDiv);
+                //if(whiteSpaceDiv == null) console.log(`Indices start : ${ last_sibling.endIndex } end : ${ cursor.startIndex }`);
+                if(whiteSpaceDiv){ parentNode.children.push(whiteSpaceDiv);childIndex += 1;}
+                
             }
 
             parentNode.children.push(buildNode(cursor, srcString, cursorIndex));
@@ -47,7 +36,7 @@ export function buildNode(cursor, srcString, cursorIndex)
         let last_sibling = parentNode.children[childIndex-1];
 
         //determine if a space exists between the last_sibling and the end of the parent
-        if(last_sibling != null && last_sibling.endIndex)
+        if(last_sibling != null && last_sibling.endIndex != undefined)
         {
             let whiteSpaceDiv = processWhitespace(srcString, last_sibling.endIndex, cursor.endIndex, cursorIndex);
             if(whiteSpaceDiv) parentNode.children.push(whiteSpaceDiv);
@@ -69,11 +58,17 @@ export function buildNode(cursor, srcString, cursorIndex)
 
 function buildLogicalNode(cursor, srcString, cursorIndex)
 {
+    const start = cursor.startPosition;
+    const end = cursor.endPosition;
+
     //Set up some attributes
     let logicalNode = {};
 
     logicalNode.endIndex = cursor.endIndex;
     logicalNode.startIndex = cursor.startIndex;
+
+    logicalNode.start = start;
+    logicalNode.end = end;
 
     logicalNode.hasNoChildren = cursor.currentNode().childCount == 0;
 
@@ -97,7 +92,7 @@ function buildHTMLNode(cursor, srcString, hasNoChildren, cursorIndex)
 
     let HTMLNode = (displayName == undefined) ? getTag(srcString, cursor.startIndex, cursor.endIndex, null) : document.createElement(displayName);
 
-    /*
+    
     let isCursorDiv = (cursorIndex >= cursor.startIndex) && (cursorIndex < cursor.endIndex);
     //BUILD THE TEXT CONTENT OF THE NODE
     //Only if this node has no children
@@ -109,7 +104,7 @@ function buildHTMLNode(cursor, srcString, hasNoChildren, cursorIndex)
         HTMLNode.id = "cursorDiv";
         HTMLNode.setAttribute("cursor-offset", localOffset);
     }
-    else*/
+
     if(hasNoChildren) HTMLNode.textContent = srcString.substring(cursor.startIndex, cursor.endIndex);
 
     return HTMLNode;
@@ -122,7 +117,7 @@ function processWhitespace(srcString, startIndex, endIndex, cursorIndex)
     let whiteSpaceDiv = document.createElement("whitespace");
     let whitespaceString = srcString.substring(startIndex, endIndex);
 
-    console.log(`Indices : ${ startIndex } : ${ endIndex }`);
+    //console.log(`Indices : ${ startIndex } : ${ endIndex }`);
 
     if(whitespaceString != "")
     {

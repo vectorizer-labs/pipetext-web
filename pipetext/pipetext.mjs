@@ -67,7 +67,7 @@ class PipeText
         //console.log(cursorIndex);
         var t0 = performance.now();
 
-        await self.incrementalParse(self);
+        await self.parse(self);
 
         var t1 = performance.now();
         //console.log("Parse took " + (t1 - t0) + " milliseconds.");
@@ -111,21 +111,19 @@ class PipeText
     {
         const cursor = self.tree.walk();
 
-        let rootnode = buildNode(cursor, self.codeDiv.textContent, cursorIndex);
+        self.nodeTree = buildNode(cursor, self.codeDiv.textContent, cursorIndex, null);
 
         self.codeDiv.innerHTML = "";
 
-        self.codeDiv.appendChild(rootnode.HTMLNode);
+        self.codeDiv.appendChild(self.nodeTree.HTMLNode);
 
-        //console.log(rootnode.getAttribute("endRow"));
-
-        return rootnode.getAttribute("endRow");
+        return self.nodeTree.end.row;
     }
 
     async refreshLineNums(lines,self)
     {
         self.lineDiv.innerHTML = "";
-        for(var i = 0; i <= lines; i++)
+        for(var i = 0; i <= lines-1; i++)
         {
             let line = document.createElement('line');
             line.textContent = (i+1).toString();

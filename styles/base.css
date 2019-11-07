@@ -31,7 +31,8 @@ const, export, static { color: var(--yellow); }
 #text-container { height: 100%; }
 
 line { clear: both; width: 100%; text-align: center; float: left; height: 100%;}
-lines { width: 60px;
+lines {
+    padding: 1px;
     float: left; 
     background-color: var(--black); 
     -webkit-touch-callout: none; /* iOS Safari */

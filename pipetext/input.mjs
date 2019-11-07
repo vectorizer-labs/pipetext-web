@@ -40,15 +40,6 @@ export async function handle_input(self)
 
     await self.tree.edit(edit); 
 
-    if(self.lastTree)
-    {
-        console.log("TREE");
-        console.log(self.lastTree);
-        let changes = await self.tree.getChangedRanges(self.lastTree); 
-        console.log(changes);
-    }
-    
-
     await self.refreshState(self, cursorIndex);
 
     placeCursorBack();
