@@ -1,3 +1,5 @@
+import { debugNode } from "./recursive-debug.mjs";
+
 export async function handle_input(self)
 {
     let newText = self.codeDiv.textContent;
@@ -6,7 +8,7 @@ export async function handle_input(self)
 
     let diff = getDiffOrigin(self.lastTextContent, newText, cursorIndex);
 
-    //console.log(diff);
+    console.log(diff);
 
     let length = Math.max(0, newText.length - self.lastTextContent.length);
 
@@ -40,6 +42,8 @@ export async function handle_input(self)
 
     await self.tree.edit(edit); 
 
+    //debugNode(self.tree.walk(), self.lastTextContent);
+
     await self.refreshState(self, cursorIndex);
 
     placeCursorBack();
@@ -54,7 +58,7 @@ function placeCursorBack()
 
     let content  = cursorDiv.childNodes[0];
 
-    range.setStart(content, cursorDiv.getAttribute("cursor-offset"));
+    range.setStart(content, cursorDiv.cursorOffset);
     range.collapse(true);
 
     var sel = window.getSelection();

@@ -1,4 +1,6 @@
-import { buildNode } from "./recursive-tree-builder2.mjs";
+import { buildNode } from "./recursive-tree-builder4.mjs";
+
+//import { updateNode } from "./recursive-tree-editor.mjs";
 
 import { Docstate } from "./ot-core.mjs";
 
@@ -57,9 +59,30 @@ class PipeText
 
         self.parser.setLanguage(language);
         self.tree = null;
+        self.last_tree = null;
 
-        await self.refreshState(self);
-        
+        await self.initState(self);
+    }
+
+    async initState(self, cursorIndex)
+    {
+        //console.log(cursorIndex);
+        var t0 = performance.now(); 
+
+        await self.incremental_parse(self);
+
+        var t1 = performance.now();
+        //console.log("Parse took " + (t1 - t0) + " milliseconds.");
+
+        let lineNumbers = self.tree.rootNode.endPosition.row;
+
+        await self.initializeCodeTree(self, cursorIndex);
+        await self.refreshLineNums(lineNumbers,self);
+
+        var t2 = performance.now();
+        //console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
+
+        console.log("Total " + (t2 - t0) + " milliseconds.");
     }
 
     async refreshState(self, cursorIndex)
@@ -67,57 +90,58 @@ class PipeText
         //console.log(cursorIndex);
         var t0 = performance.now();
 
-        await self.parse(self);
+        self.lastTextContent = self.codeDiv.textContent;
+
+        await self.incremental_parse(self);
 
         var t1 = performance.now();
-        //console.log("Parse took " + (t1 - t0) + " milliseconds.");
+        console.log("Parse took " + (t1 - t0) + " milliseconds.");
 
-        let lineNumbers = await self.refreshCodeTree(self, cursorIndex);
+        let lineNumbers = self.tree.rootNode.endPosition.row;
+
+        console.log(self.last_tree.getChangedRanges(self.tree));
+
+        await self.refreshCodeTree(self, cursorIndex);
 
         await self.refreshLineNums(lineNumbers,self);
 
         var t2 = performance.now();
-        //console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
+        console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
 
         console.log("Total " + (t2 - t0) + " milliseconds.");
+
+        
+    }
+
+    async parse(self) { self.tree = self.parser.parse(self.lastTextContent, self.tree); }
+
+    async incremental_parse(self) 
+    { 
+        if(self.tree) self.last_tree = self.tree; 
+        self.tree = self.parser.parse(self.lastTextContent, self.last_tree);
+    }
+
+    async initializeCodeTree(self, cursorIndex)
+    {
+        //4
+        let nodeTree = buildNode(self.tree.rootNode, self.lastTextContent, cursorIndex);
+
+        self.codeDiv.innerHTML = "";
+
+        self.codeDiv.appendChild(nodeTree);
 
         self.lastTextContent = self.codeDiv.textContent;
     }
 
-    async parse(self) { self.tree = self.parser.parse(self.codeDiv.textContent, self.tree); }
-
-    async incrementalParse(self) 
-    { 
-        if(self.tree) self.lastTree = self.tree;
-        self.tree = self.parser.parse(self.codeDiv.textContent, self.tree); 
-    }
-
-    async debugParse(self) 
-    { 
-
-        let sourceLines = self.codeDiv.textContent.split(/(\r\n)|(\r)|(\n)/);
-
-        self.tree = self.parser.parse((index, position) => {
-            console.log("Index : " + index);
-            console.log("Position : " + position.row + " : " + position.column);
-            let parseableString = self.codeDiv.textContent.slice(index);
-            console.log(parseableString);
-            return parseableString;
-          }, self.tree); 
-
-    }
-
     async refreshCodeTree(self, cursorIndex)
     {
-        const cursor = self.tree.walk();
+        //4
+        //let nodeTree = updateNode(self.tree.rootNode,self.last_tree.rootNode, self.lastTextContent);
 
-        self.nodeTree = buildNode(cursor, self.codeDiv.textContent, cursorIndex, null);
+        let nodeTree = buildNode(self.tree.rootNode, self.lastTextContent, cursorIndex);
 
         self.codeDiv.innerHTML = "";
-
-        self.codeDiv.appendChild(self.nodeTree.HTMLNode);
-
-        return self.nodeTree.end.row;
+        self.codeDiv.appendChild(nodeTree);
     }
 
     async refreshLineNums(lines,self)
