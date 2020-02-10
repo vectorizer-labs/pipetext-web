@@ -52,7 +52,7 @@ class PipeText
 
         self.parser = new TreeSitter();
 
-        const url = `pipetext-web/tree-sitter/tree-sitter-${language}.wasm`;
+        const url = `tree-sitter/tree-sitter-${language}.wasm`;
 
         try { language = await TreeSitter.Language.load(url); } 
         catch (e) { console.error(e); return; }
