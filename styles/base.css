@@ -2,9 +2,9 @@ html
 {
     background-color: var(--bg);
     color: var(--fg);
+    line-height: 100%;
     font-family: 'Inconsolata', monospace;
-    font-size: 12pt;
-    height: 100%;
+    font-size: 16px;
 }
 
 [contenteditable]:focus {
@@ -28,11 +28,10 @@ string { color: var(--cyan); }
 
 const, export, static { color: var(--yellow); }
 
-#text-container { height: 100%; }
-
-line { clear: both; width: 100%; text-align: center; float: left; height: 100%;}
 lines {
-    padding: 1px;
+    line-height: 100%;
+    font-family: 'Inconsolata', monospace;
+    font-size: 16px;
     float: left; 
     background-color: var(--black); 
     -webkit-touch-callout: none; /* iOS Safari */
@@ -41,7 +40,8 @@ lines {
        -moz-user-select: none; /* Firefox */
         -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Non-prefixed version, currently
-                                  supported by Chrome and Opera */}
+                                  supported by Chrome and Opera */
+}
 
 ::selection
 {
@@ -50,7 +50,7 @@ lines {
 
 error
 {
-    text-decoration: underline dotted red;
+    text-decoration: underline red;
 }
 
 while, member_expression property_identifier

@@ -5,8 +5,7 @@
 <head>
     <title>small.js</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <script type="application/javascript" src="tree-sitter/tree-sitter.js"></script>
-    <script type="module" src="pipetext/pipetext.mjs"></script>
+    <script src="pipetext/tree-sitter/tree-sitter.js"></script>
     <link rel="stylesheet" href="styles/selenized-dark.css">
     <link rel="stylesheet" href="styles/base.css">
 
@@ -148,8 +147,12 @@ export default function calculate(obj, buttonName) {
     };
 }
 </div>
-    <script> 
-        
+<div id="rows">
+
+</div>
+    <script type="module">
+        import { PipeText } from "./pipetext/pipetext.mjs";
+        var pt = new PipeText(document.getElementById("text-container"));
     
     </script>
 </body>

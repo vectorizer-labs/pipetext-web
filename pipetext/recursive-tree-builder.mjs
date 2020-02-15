@@ -1,5 +1,7 @@
-export function buildNode(node, srcString, cursorIndex)
+export function build_node(node, srcString, cursorIndex)
 {
+    //get the tagName for this node
+    //if it has no 
     let tagName = node.isNamed() ? node.type : getTag(node);
 
     let htmlNode = document.createElement(tagName);
@@ -17,9 +19,9 @@ export function buildNode(node, srcString, cursorIndex)
 
     let last_child = undefined;
 
-    children.forEach(child => 
+    children.forEach(child =>
     {
-        let new_child = buildNode(child, srcString, cursorIndex);
+        let new_child = build_node(child, srcString, cursorIndex);
 
         if(last_child)
         {
@@ -50,7 +52,7 @@ function setHTMLAttributes(htmlNode, node, cursorIndex)
     htmlNode.startIndex = node.startIndex;
     htmlNode.endIndex = node.endIndex;
 
-    htmlNode.setAttribute("nodeId", node.id);
+    htmlNode.setAttribute("id", node.id);
 
     if(node.childCount == 0) setCursorDiv(htmlNode, cursorIndex, node.startIndex, node.endIndex)
 }
@@ -59,7 +61,6 @@ function setCursorDiv(htmlNode, cursorIndex, start, end)
 {
     if(cursorIndex >= start && cursorIndex < end)
     {
-
         htmlNode.id = "cursorDiv";
         htmlNode.cursorOffset = cursorIndex-start;
     }

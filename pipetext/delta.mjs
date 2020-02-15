@@ -1,6 +1,8 @@
-import { debugNode } from "./recursive-debug.mjs";
+import { update_changed_nodes, recursive_debug } from "./recursive-tree-editor.mjs";
+import { build_node } from "./recursive-tree-builder.mjs";
+import { render_rows, build_tree } from "./tree-builder.mjs";
 
-export async function handle_input(self)
+export function get_edit(self)
 {
     let newText = self.codeDiv.textContent;
 
@@ -8,7 +10,7 @@ export async function handle_input(self)
 
     let diff = getDiffOrigin(self.lastTextContent, newText, cursorIndex);
 
-    console.log(diff);
+    //console.log(diff);
 
     let length = Math.max(0, newText.length - self.lastTextContent.length);
 
@@ -27,43 +29,42 @@ export async function handle_input(self)
     //if we're on the same line add the length
     let deltaColumn = (deltaRowLength > 0) ?  length : startColumn + length;
 
+    let new_end_index = diff[0] + diff[2].length;
+
     let edit = {
         startIndex: diff[0],
         oldEndIndex: diff[1],
-        newEndIndex: diff[0] + diff[2].length,
+        newEndIndex: new_end_index,
         startPosition: {row: startRow, column: startColumn},
         oldEndPosition: {row: endRow, column: endColumn },
         newEndPosition: {row: startRow + deltaRowLength, column: deltaColumn},
     };
 
-    //console.log(edit);
-
-    //console.log(cursorIndex);
-
-    await self.tree.edit(edit); 
-
-    //debugNode(self.tree.walk(), self.lastTextContent);
-
-    await self.refreshState(self, cursorIndex);
-
-    placeCursorBack();
-
+    return { edit : edit, cursor_index : cursorIndex }; 
 }
 
-function placeCursorBack()
+export function get_tree_delta(self)
 {
-    let cursorDiv = document.getElementById("cursorDiv");
-    //console.log(cursorDiv);
-    var range = document.createRange();
+    let changed_ranges = self.last_tree.getChangedRanges(self.tree)[0];
+    if(!changed_ranges) return undefined;
+    console.log(changed_ranges);
 
-    let content  = cursorDiv.childNodes[0];
+    //get the current node
+    let node_A = self.last_tree.rootNode.descendantForIndex(changed_ranges.startIndex, changed_ranges.endIndex);
+    console.log(`OLD NODE : ${node_A.type} , id : ${ node_A.id }`);
 
-    range.setStart(content, cursorDiv.cursorOffset);
-    range.collapse(true);
+    //get the new node that should take its place
+    let node_B = self.tree.rootNode.descendantForIndex(changed_ranges.startIndex, changed_ranges.endIndex);
+    console.log(`NEW NODE : ${node_B.type} , id : ${ node_B.id }`);
 
-    var sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);   
+    return {id : node_A.id , new_node : build_node(node_B, self.lastTextContent, 0) };
+}
+function edit_html_nodes(tree_delta)
+{
+    let changed_element = document.getElementById(tree_delta.id.toString());
+
+    changed_element.parentNode.replaceChild(tree_delta.new_node, changed_element);
+    console.log(tree_delta);
 }
 
 function clearSelectionPFill()
@@ -74,9 +75,9 @@ function clearSelectionPFill()
         } else if (window.getSelection().removeAllRanges) {  // Firefox
           window.getSelection().removeAllRanges();
         }
-     } else if (document.selection) {  // IE?
-       document.selection.empty();
-     }
+    } else if (document.selection) {  // IE?
+        document.selection.empty();
+    }
 }
 
 

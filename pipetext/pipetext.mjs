@@ -1,12 +1,7 @@
-import { buildNode } from "./recursive-tree-builder4.mjs";
+import { build_tree } from "./tree-builder.mjs";
+import { get_edit } from "./delta.mjs";
 
-//import { updateNode } from "./recursive-tree-editor.mjs";
-
-import { Docstate } from "./ot-core.mjs";
-
-import { handle_input } from "./input.mjs";
-
-class PipeText
+export class PipeText
 {
     constructor(div)
     {
@@ -19,7 +14,7 @@ class PipeText
         //move initial text to code div
         this.codeDiv = document.createElement('code');
         this.codeDiv.contentEditable = true;
-        this.codeDiv.style = "white-space: pre;"
+        this.codeDiv.style = "white-space: pre; float: left;"
         this.codeDiv.innerHTML = this.div.innerHTML;
 
         this.div.innerHTML = "";
@@ -29,18 +24,10 @@ class PipeText
 
         this.lastTextContent = this.codeDiv.textContent;
 
-        //this.docState = new Docstate(this.lastTextContent);
-
-        //this.init_listener_hacks()
-
         let self = this;
 
-        //make sure plain text only is pasted
-        this.codeDiv.addEventListener("input", function(e) 
-        {
-            //console.log(e);
-            handle_input(self);
-        });
+        //TODO: make sure plain text only is pasted
+        this.codeDiv.addEventListener("input", function(e) { self.refresh_state(self); });
 
         this.init(self, "javascript").then((p) => console.log("initialized"));
 
@@ -52,7 +39,7 @@ class PipeText
 
         self.parser = new TreeSitter();
 
-        const url = `tree-sitter/tree-sitter-${language}.wasm`;
+        const url = `pipetext/tree-sitter/tree-sitter-${language}.wasm`;
 
         try { language = await TreeSitter.Language.load(url); } 
         catch (e) { console.error(e); return; }
@@ -66,51 +53,41 @@ class PipeText
 
     async initState(self, cursorIndex)
     {
-        //console.log(cursorIndex);
         var t0 = performance.now(); 
 
         await self.incremental_parse(self);
 
-        var t1 = performance.now();
-        //console.log("Parse took " + (t1 - t0) + " milliseconds.");
+        console.log("Parse took " + (performance.now() - t0) + " milliseconds.");
 
         let lineNumbers = self.tree.rootNode.endPosition.row;
 
-        await self.initializeCodeTree(self, cursorIndex);
+        await self.updateCodeTree(self, cursorIndex);
         await self.refreshLineNums(lineNumbers,self);
 
-        var t2 = performance.now();
-        //console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
-
-        console.log("Total " + (t2 - t0) + " milliseconds.");
+        console.log("Total " + (performance.now() - t0) + " milliseconds.");
     }
 
-    async refreshState(self, cursorIndex)
+    async refresh_state(self)
     {
         //console.log(cursorIndex);
         var t0 = performance.now();
 
+        let result = get_edit(self);
+
+        await self.tree.edit(result.edit); 
+    
+        //Update parser data
         self.lastTextContent = self.codeDiv.textContent;
-
         await self.incremental_parse(self);
-
-        var t1 = performance.now();
-        console.log("Parse took " + (t1 - t0) + " milliseconds.");
 
         let lineNumbers = self.tree.rootNode.endPosition.row;
 
-        console.log(self.last_tree.getChangedRanges(self.tree));
-
-        await self.refreshCodeTree(self, cursorIndex);
-
-        await self.refreshLineNums(lineNumbers,self);
-
-        var t2 = performance.now();
-        console.log("Rebuild took " + (t2 - t1) + " milliseconds.");
-
-        console.log("Total " + (t2 - t0) + " milliseconds.");
-
+        self.updateCodeTree(self, result.cursor_index);
         
+
+        self.refreshLineNums(lineNumbers,self);
+
+        console.log("Total " + (performance.now() - t0) + " milliseconds.");
     }
 
     async parse(self) { self.tree = self.parser.parse(self.lastTextContent, self.tree); }
@@ -121,30 +98,19 @@ class PipeText
         self.tree = self.parser.parse(self.lastTextContent, self.last_tree);
     }
 
-    async initializeCodeTree(self, cursorIndex)
+    updateCodeTree(self, cursorIndex)
     {
-        //4
-        let nodeTree = buildNode(self.tree.rootNode, self.lastTextContent, cursorIndex);
+        let result = build_tree(self.tree, document.createElement("div"), self.lastTextContent, cursorIndex);
 
         self.codeDiv.innerHTML = "";
 
-        self.codeDiv.appendChild(nodeTree);
+        self.codeDiv.appendChild(result.html);
+        if(result.cursor_div) placeCursorBack(result.cursor_div, result.offset);
 
         self.lastTextContent = self.codeDiv.textContent;
     }
 
-    async refreshCodeTree(self, cursorIndex)
-    {
-        //4
-        //let nodeTree = updateNode(self.tree.rootNode,self.last_tree.rootNode, self.lastTextContent);
-
-        let nodeTree = buildNode(self.tree.rootNode, self.lastTextContent, cursorIndex);
-
-        self.codeDiv.innerHTML = "";
-        self.codeDiv.appendChild(nodeTree);
-    }
-
-    async refreshLineNums(lines,self)
+    refreshLineNums(lines,self)
     {
         self.lineDiv.innerHTML = "";
         for(var i = 0; i <= lines-1; i++)
@@ -152,30 +118,22 @@ class PipeText
             let line = document.createElement('line');
             line.textContent = (i+1).toString();
             self.lineDiv.appendChild(line);
+            let newline = document.createTextNode('\n');
+            self.lineDiv.appendChild(newline);
         }
     }
 }
 
-function getSelectionRangeWithin(element) {
-    var doc = element.ownerDocument || element.document;
-    var win = doc.defaultView || doc.parentWindow;
-    var sel;
-    sel = win.getSelection();
-    if (sel.rangeCount > 0) 
-    {
-        var range = win.getSelection().getRangeAt(0);
-        var preCaretRange = range.cloneRange();
+function placeCursorBack(cursorDiv, cursorOffset)
+{
+    var range = document.createRange();
 
-        preCaretRange.selectNodeContents(element);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        let startIndex = preCaretRange.toString().length;
-        preCaretRange.setEnd(range.endContainer, range.endOffset);
-        let endIndex = preCaretRange.toString().length;
+    let content  = cursorDiv.childNodes[0];
 
-        return [startIndex,endIndex];
-    }
-    return [0,0];
+    range.setStart(content, cursorOffset);
+    range.collapse(true);
+
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);   
 }
-
-
-var pt = new PipeText(document.getElementById("text-container"));
